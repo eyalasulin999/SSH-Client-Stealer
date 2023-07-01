@@ -4,10 +4,6 @@
 
 I want my ssh client credentials stealer to extract user@host and password or priavte key
 
-## Generic Solution
-
-TODO - *I can find generic solution for extracting all information I want*
-
 ## Password Extraction
 
 It seems that the password is read in function `userauth_passwd()`
@@ -19,39 +15,34 @@ xasprintf(&prompt, "%s@%s's password: ", authctxt->server_user, host);
 password = read_passphrase(prompt, 0);
 ```
 
-I have two possible options:
+We want to hook printing of `"%s@%s's password: "` to set up next hook
 
-- hook library functions that used by `read_passphrase()`
-- hook library functions that used by functions that using `password` variable
+### Hook Printing
 
-### Who is using `password` variable?
+Let's check call stack for library function that we can hook
 
-The `password` variable is passed to
-
-```c
-// sshconnect2.c
-(r = sshpkt_put_cstring(ssh, password)) != 0 || // Line 1064
-freezero(password, strlen(password)); // Line 1071
+```
+[#0] 0x7ffff7736380 → __vasprintf_chk(result_ptr=0x7fffffffc1e0, flag=0x1, format=0x5555556106ae "%s@%s's password: ", ap=0x7fffffffc100)
+[#1] 0x5555555c79aa → vasprintf(__ap=0x7fffffffc100, __fmt=0x5555556106ae "%s@%s's password: ", __ptr=0x7fffffffc1e0)
+[#2] 0x5555555c79aa → xvasprintf(ap=0x7fffffffc100, fmt=0x5555556106ae "%s@%s's password: ", ret=0x7fffffffc1e0)
+[#3] 0x5555555c79aa → xasprintf(ret=0x7fffffffc1e0, fmt=0x5555556106ae "%s@%s's password: ")
 ```
 
-These functions is too generic and used many times in sequence, so it seems too hard for hooking for me
-
-### How `read_passphrase()` function works?
-
-*I am gonna ignore askpass feature for now*
+`vasprintf()` is inline function, `__vasprintf_chk()` is great
 
 ```c
-// readpass.c
-// Line 187
-if (readpassphrase(prompt, buf, sizeof buf, rppflags) == NULL) {
-	if (flags & RP_ALLOW_EOF)
-		return NULL;
-	return xstrdup("");
-}
-
-ret = xstrdup(buf);
-explicit_bzero(buf, sizeof(buf));
-return ret;
+int __vasprintf_chk (char **__restrict __ptr, int __flag, const char *__restrict __fmt, __gnuc_va_list __arg);
 ```
 
-TODO - *Continue*
+another possible option is to hook `write()` libc wrapper
+
+```c
+// readpassphrase.c
+// Line 128
+if (!(flags & RPP_STDIN))
+	(void)write(output, prompt, strlen(prompt));
+```
+
+```c
+ssize_t write (int __fd, const void *__buf, size_t __n);
+```
