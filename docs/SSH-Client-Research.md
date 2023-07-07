@@ -15,9 +15,7 @@ xasprintf(&prompt, "%s@%s's password: ", authctxt->server_user, host);
 password = read_passphrase(prompt, 0);
 ```
 
-We want to hook printing of `"%s@%s's password: "` to set up next hook
-
-### Hook Printing
+We want to hook printing of `"%s@%s's password: "` to 'invoke' the next hook of reading the password
 
 Let's check call stack for library function that we can hook
 
@@ -28,13 +26,13 @@ Let's check call stack for library function that we can hook
 [#3] 0x5555555c79aa → xasprintf(ret=0x7fffffffc1e0, fmt=0x5555556106ae "%s@%s's password: ")
 ```
 
-`vasprintf()` is inline function, `__vasprintf_chk()` is great
+`vasprintf()` is inline function, but `__vasprintf_chk()` is great
 
 ```c
 int __vasprintf_chk (char **__restrict __ptr, int __flag, const char *__restrict __fmt, __gnuc_va_list __arg);
 ```
 
-another possible option is to hook `write()` libc wrapper
+another possible option is to hook `write()` libc wrapper function
 
 ```c
 // readpassphrase.c
@@ -45,4 +43,45 @@ if (!(flags & RPP_STDIN))
 
 ```c
 ssize_t write (int __fd, const void *__buf, size_t __n);
+```
+
+There we set a global variable so we can 'invoke' the next hook by reading the variable value
+
+Let's move to password reading
+
+```c
+// readpassphrase.c
+// Line 132
+while ((nr = read(input, &ch, 1)) == 1 && ch != '\n' && ch != '\r') {
+```
+
+we can hook `read()` libc wrapper function, until reading `'\n'`
+
+```c
+ssize_t read (int __fd, void *__buf, size_t __nbytes);
+```
+
+another possible option is to hook `memcpy()`
+
+```c
+// readpass.c
+// Line 193
+ret = xstrdup(buf);
+explicit_bzero(buf, sizeof(buf));
+return ret
+```
+
+```c
+void * memcpy (void *__restrict __dest, const void *__restrict __src, size_t __len);
+```
+
+1024 is max length of password:
+
+```c
+// readpass.c
+// Line 125
+char cr = '\r', *askpass = NULL, *ret, buf[1024];
+
+// Line 187
+if (readpassphrase(prompt, buf, sizeof buf, rppflags) == NULL) {
 ```
