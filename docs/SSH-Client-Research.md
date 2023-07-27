@@ -85,3 +85,18 @@ char cr = '\r', *askpass = NULL, *ret, buf[1024];
 // Line 187
 if (readpassphrase(prompt, buf, sizeof buf, rppflags) == NULL) {
 ```
+
+## Key Extraction
+
+```c
+// sshconnect2.h
+// Line 1872
+ident = format_identity(id);
+// Line 678
+xasprintf(&ret, "%s %s%s%s%s%s%s",
+	    id->filename,
+	    id->key ? sshkey_type(id->key) : "", id->key ? " " : "",
+	    fp ? fp : "",
+	    id->userprovided ? " explicit" : "", note,
+	    id->agent_fd != -1 ? " agent" : "");
+```
