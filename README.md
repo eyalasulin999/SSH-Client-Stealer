@@ -3,7 +3,7 @@ OpenSSH client credentials stealer by functions hooking
 
 ### This is POC
 
-- you should hijacking a SharedObject used by ssh (`ldd /bin/ssh`)
+- you should hijacking a shared library used by ssh (`ldd /bin/ssh`)
 - output written to STDOUT
 
 ### Usage
